@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11 -Wall -Wextra -pedantic -lpthread -g -O0 -g    CMakeFiles/persistent_data_structures.dir/main.cpp.o CMakeFiles/persistent_data_structures.dir/map_test.cpp.o  -o persistent_data_structures -rdynamic -lgtest -lgtest_main 
