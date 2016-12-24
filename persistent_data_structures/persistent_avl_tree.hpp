@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <iostream>
 #include <vector>
+#include <memory>
 
 template <class Key, class Value, class Comparator = std::less<Key>>
 class PersistentAVLTree {
@@ -12,8 +13,8 @@ public:
 
 private:
     struct Node {
-        Node* left;
-        Node* right;
+        std::shared_ptr<Node> left;
+        std::shared_ptr<Node> right;
         value_type kvPair;
         unsigned int height;
 
@@ -30,11 +31,11 @@ private:
     };
 
     struct Version {
-        Node* root;
+        std::shared_ptr<Node> root;
         size_t size;
         size_t number;
 
-        Version(Node* root_, const size_t size_, size_t number_) :
+        Version(std::shared_ptr<Node> root_, const size_t size_, size_t number_) :
             root(root_), size(size_), number(number_)
         {}
     };
@@ -45,7 +46,7 @@ public:
     public:
         TreeIterator() : _cur(nullptr)
         {}
-        TreeIterator(Node* node) : _cur(node)
+        TreeIterator(std::shared_ptr<Node> node) : _cur(node)
         {}
         TreeIterator(PersistentAVLTree* tree) : _cur(tree->_root)
         {}
@@ -76,7 +77,7 @@ public:
                     _cur = _cur->left;
                 }
             } else {
-                Node* parent = _cur->parent;
+                std::shared_ptr<Node> parent = _cur->parent;
                 if (nullptr == parent) {
                     _cur = nullptr;
                 } else {
@@ -123,7 +124,7 @@ public:
             }
         }
     private:
-        Node* _cur;
+        std::shared_ptr<Node> _cur;
     };
 
     typedef TreeIterator<value_type> iterator;
@@ -140,7 +141,7 @@ public:
     }
 
     // invalid return value. now returns iterator to new Root, but should return iterator to inserted element
-    std::pair<iterator, bool> insert(const size_t srcVersion, const Key& key, const Value& value = Value()) {
+    std::pair<iterator, bool> insert(const size_t srcVersion, const Key& key, const Value& value) {
         if (_versions.size() - 1 < srcVersion) {
             throw new std::out_of_range("Invalid version: " + srcVersion);
         }
@@ -149,11 +150,11 @@ public:
         auto size = _versions[srcVersion].size;
 
         if (!root) {
-            Node* newRoot = new Node(key, value);
+            std::shared_ptr<Node> newRoot = std::make_shared<Node>(key, value);
             _versions.push_back(Version(newRoot, size + 1, srcVersion + 1));
             return std::make_pair(iterator(newRoot), true);
         }
-        Node* newRoot = _insert(root, key, value);
+        std::shared_ptr<Node> newRoot = _insert(root, key, value);
         _versions.push_back(Version(newRoot, size + 1, srcVersion + 1));
         return std::make_pair(iterator(newRoot), true);
     }
@@ -165,7 +166,7 @@ public:
 
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
-        Node* newRoot = _erase(root, key);
+        std::shared_ptr<Node> newRoot = _erase(root, key);
         _versions.push_back(Version(newRoot, size - 1, srcVersion + 1));
     }
 
@@ -190,12 +191,7 @@ public:
     }
 
     inline void clear() {
-        std::cout << "WE LOVE LEAKS" << std::endl;
-//        for (size_t i = 1; i < _versions.size(); ++i) {
-//            while (_versions[i].root) {
-//                _deleteNode(_versions[i].number, (_versions[i].root)->key());
-//            }
-//        }
+        _versions.clear();
     }
 
     inline bool empty(const size_t version) const {
@@ -211,7 +207,7 @@ public:
     }
 
     inline iterator begin(const size_t version) noexcept {
-        Node* cur = _versions[version].root;
+        std::shared_ptr<Node> cur = _versions[version].root;
         while (cur->left) {
             cur = cur->left;
         }
@@ -223,7 +219,7 @@ public:
     }
 
     inline const_iterator cbegin(const size_t version) const noexcept {
-        Node* cur = _versions[version].root;
+        std::shared_ptr<Node> cur = _versions[version].root;
         while (cur->left) {
             cur = cur->left;
         }
@@ -244,8 +240,8 @@ private:
     std::vector<Version> _versions;
     Comparator _comparator;
 
-    Node* _copyNode(Node* node) {
-        Node* copy = new Node(node->key(), node->value());
+    std::shared_ptr<Node> _copyNode(std::shared_ptr<Node> node) {
+        std::shared_ptr<Node> copy = std::make_shared<Node>(node->key(), node->value());
         copy->left = node->left;
         copy->right = node->right;
         return copy;
@@ -259,22 +255,22 @@ private:
         }
     }
 
-    unsigned int _height(Node* node) {
+    unsigned int _height(std::shared_ptr<Node> node) {
         return node ? node->height : 0;
     }
 
-    int _getBalance(Node* node) {
+    int _getBalance(std::shared_ptr<Node> node) {
         return _height(node->right) - _height(node->left);
     }
 
-    void _fixHeight(Node* node) {
+    void _fixHeight(std::shared_ptr<Node> node) {
         unsigned int hl = _height(node->left);
         unsigned int hr = _height(node->right);
         node->height = (hl > hr ? hl : hr) + 1;
     }
 
-    Node* _rotateRight(Node* node) {
-        Node* l = node->left;
+    std::shared_ptr<Node> _rotateRight(std::shared_ptr<Node> node) {
+        std::shared_ptr<Node> l = node->left;
         node->left = l->right;
         l->right = node;
         _fixHeight(node);
@@ -282,8 +278,8 @@ private:
         return l;
     }
 
-    Node* _rotateleft(Node* node) {
-        Node* r = node->right;
+    std::shared_ptr<Node> _rotateleft(std::shared_ptr<Node> node) {
+        std::shared_ptr<Node> r = node->right;
         node->right = r->left;
         r->left = node;
         _fixHeight(node);
@@ -291,7 +287,7 @@ private:
         return r;
     }
 
-    Node* _balance(Node* node) {
+    std::shared_ptr<Node> _balance(std::shared_ptr<Node> node) {
         _fixHeight(node);
         if (_getBalance(node) == 2) {
             if (_getBalance(node->right) < 0) {
@@ -308,11 +304,11 @@ private:
         return node;
     }
 
-    Node* _insert(Node* root, const Key& key, const Value& value) {
+    std::shared_ptr<Node> _insert(std::shared_ptr<Node> root, const Key& key, const Value& value) {
         if (!root) {
-            return new Node(key, value);
+            return std::make_shared<Node>(key, value);
         }
-        Node* copyP = _copyNode(root);
+        std::shared_ptr<Node> copyP = _copyNode(root);
         if (_comparator(key, copyP->key())) {
             copyP->left = _insert(copyP->left, key, value);
         } else if (_comparator(copyP->key(), key)) {
@@ -323,11 +319,11 @@ private:
         return _balance(copyP);
     }
 
-    Node* _findMin(Node* root) {
+    std::shared_ptr<Node> _findMin(std::shared_ptr<Node> root) {
         return root->left ? _findMin(root->left) : root;
     }
 
-    Node* _removeMin(Node* root) {
+    std::shared_ptr<Node> _removeMin(std::shared_ptr<Node> root) {
         if (!root->left) {
             return root->right;
         }
@@ -335,61 +331,29 @@ private:
         return _balance(root);
     }
 
-    Node* _erase(Node* root, const Key& key) {
+    std::shared_ptr<Node> _erase(std::shared_ptr<Node> root, const Key& key) {
         if (!root) {
             return nullptr;
         }
 
-        Node* copyP = _copyNode(root);
+        std::shared_ptr<Node> copyP = _copyNode(root);
         if (_comparator(key, copyP->key())) {
             copyP->left = _erase(copyP->left,key);
         } else if (_comparator(copyP->key(), key)) {
             copyP->right = _erase(copyP->right,key);
         } else {
-            Node* l = copyP->left;
-            Node* r = copyP->right;
-            delete copyP;
+            std::shared_ptr<Node> l = copyP->left;
+            std::shared_ptr<Node> r = copyP->right;
             if (!r) {
                 return l;
             }
-            Node* min = _findMin(r);
+            std::shared_ptr<Node> min = _findMin(r);
             min->right = _removeMin(r);
             min->left = l;
             return _balance(min);
         }
         return _balance(copyP);
     }
-
-    void _deleteNode(const size_t srcVersion, const Key& key) {
-        _versions[srcVersion].root = _deleteNode(_versions[srcVersion].root, key);
-        --_versions[srcVersion].size;
-    }
-
-    Node* _deleteNode(Node* root, const Key& key) {
-        if (!root) {
-            return nullptr;
-        }
-
-        if (_comparator(key, root->key())) {
-            root->left = _erase(root->left,key);
-        } else if (_comparator(root->key(), key)) {
-            root->right = _erase(root->right,key);
-        } else {
-            Node* l = root->left;
-            Node* r = root->right;
-
-            delete root;
-            if (!r) {
-                return l;
-            }
-            Node* min = _findMin(r);
-            min->right = _removeMin(r);
-            min->left = l;
-            return _balance(min);
-        }
-        return _balance(root);
-    }
-
 };
 
 #endif // PERSISTENT_AVL_TREE_HPP
