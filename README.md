@@ -1,7 +1,6 @@
 # README #
 
 ## Основные классы ##
-
 * PersistentVector<T> - персистентный массив
 * PersistentList<T> - персистентный односвязный список
 * PersistentMap<K, V, Comparator> - персистентный ассоциативный массив
