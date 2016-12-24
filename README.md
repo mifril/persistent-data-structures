@@ -1,4 +1,4 @@
-# README #
+# Persistent data structures #
 
 ## Основные классы ##
 * PersistentVector<T> - персистентный массив
