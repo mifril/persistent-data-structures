@@ -85,16 +85,6 @@ public:
     inline std::pair<iterator, bool> insert(const size_t version, const value_type& pair) {
         return _tree.insert(version, pair.first, pair.second);
     }
-//    template<class InputIt>
-//    void insert(InputIt first, InputIt last) {
-//        for (auto it = first; it != last; ++it) {
-//            insert(*it);
-//        }
-//    }
-//    template <class... Args>
-//    inline std::pair<iterator, bool> emplace(Args&&... args) {
-//        return _tree.insert(std::forward<Args>(args)...);
-//    }
     inline size_t erase(const size_t version, const Key& key) {
         return _tree.erase(version, key);
     }
