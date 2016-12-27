@@ -20,18 +20,15 @@ public:
 
     PersistentMap() : _tree (PersistentAVLTree<Key, Value, Comparator>())
     {}
-    PersistentMap(const PersistentMap& other) : _tree (PersistentAVLTree<Key, Value, Comparator>()) {
-        insert(other.begin(), other.end());
-    }
+    PersistentMap(const PersistentMap& other) : _tree (other._tree)
+    {}
     PersistentMap(PersistentMap&& other) : _tree(other._tree) {
         other._tree = PersistentAVLTree<Key, Value, Comparator>();
     }
     PersistentMap& operator=(const PersistentMap& other) {
         if (*this != other) {
-            if (_tree) {
-                _tree.clear();
-            }
-            insert(other.begin(), other.end());
+            _tree.clear();
+            _tree = other._tree;
         }
         return *this;
     }
@@ -43,6 +40,19 @@ public:
     }
     ~PersistentMap() {
         clear();
+    }
+
+    bool operator==(const PersistentMap& other) {
+        return _tree == other._tree;
+    }
+    bool operator==(const PersistentMap& other) const {
+        return _tree == other._tree;
+    }
+    bool operator!=(const PersistentMap& other) {
+        return _tree != other._tree;
+    }
+    bool operator!=(const PersistentMap& other) const {
+        return _tree != other._tree;
     }
 
     // Will not create new element (key, Value()) if 'key' does not exist in the tree
@@ -85,7 +95,7 @@ public:
     inline std::pair<iterator, bool> insert(const size_t version, const value_type& pair) {
         return _tree.insert(version, pair.first, pair.second);
     }
-    inline size_t erase(const size_t version, const Key& key) {
+    inline void erase(const size_t version, const Key& key) {
         return _tree.erase(version, key);
     }
     inline iterator find(const size_t version, const key_type& key) {
