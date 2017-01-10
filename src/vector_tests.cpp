@@ -24,10 +24,6 @@ TEST_F(PersistentVectorTest, ConstructorTest) {
     ASSERT_EQ(8, vector2.back(3));
     ASSERT_EQ(3, vector2.size(3));
 
-//    for (auto it = vector2.begin(3); it != vector2.end(); ++it) {
-//        std::cout << *it << std::endl;
-//    }
-
     PersistentVector<int> vector3;
     vector3 = vector1;
     it = vector3.begin(3);

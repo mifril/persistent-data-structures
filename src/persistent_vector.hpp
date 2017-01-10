@@ -58,41 +58,53 @@ private:
         bool operator==(const FatNode& other) const {
             return nodeVersions == other.nodeVersions;
         }
-//        std::shared_ptr<FatNode> prev;
-//        std::shared_ptr<FatNode> next;
     };
 
     template<class Y>
     class VectorIterator : public std::iterator<std::bidirectional_iterator_tag, Y> {
     public:
-        VectorIterator(PersistentVector* vector) : _vector(vector), _cur(0), _version(0)
+        VectorIterator(PersistentVector& vector) : _vector(vector), _isEnd(true)
         {}
-        VectorIterator(PersistentVector* vector, const size_t version) : _vector(vector), _version(version)
+//        VectorIterator(PersistentVector* vector) : _vector(vector), _cur(0), _version(0), _isEnd(false)
+//        {}
+//        VectorIterator(PersistentVector* vector, const size_t version)
+//            : _vector(vector), _version(version), _isEnd(false)
+//        {}
+        VectorIterator(PersistentVector& vector, const size_t version, const long long cur)
+            : _vector(vector), _cur(cur), _version(version), _isEnd(false)
         {}
-        VectorIterator(PersistentVector* vector, const long long cur, const size_t version)
-            : _vector(vector), _cur(cur), _version(version)
+        VectorIterator(const VectorIterator& other)
+            : _vector(other._vector), _cur(other._cur), _version(other._version), _isEnd(false)
         {}
-        VectorIterator(const VectorIterator& other) : _vector(other._vector), _cur(other._cur), _version(other._version)
-        {}
-        VectorIterator(VectorIterator&& other) : _vector(other._vector), _cur(other._cur), _version(other._version) {
+        VectorIterator(VectorIterator&& other)
+                : _vector(other._vector), _cur(other._cur), _version(other._version), _isEnd(false) {
             other._cur = 0;
             other._version = 0;
         }
         VectorIterator& operator=(const VectorIterator& other) {
             if (*this != other) {
+                _vector = other._vector;
                 _cur = other._cur;
+                _version - other._version;
+                _isEnd = other._isEnd;
             }
             return* this;
         }
         VectorIterator& operator=(VectorIterator&& other) {
             if (*this != other) {
+                std::swap(_vector, other._vector);
                 std::swap(_cur, other._cur);
+                std::swap(_version, other._version);
+                std::swap(_isEnd, other._isEnd);
             }
             return* this;
         }
         VectorIterator& operator++() {
-            if (_cur >= 0) {
+            if (!_isEnd) {
                 ++_cur;
+            }
+            if (_cur >= _vector.size(_version)) {
+                _isEnd = true;
             }
             return* this;
         }
@@ -102,7 +114,7 @@ private:
             return tmp;
         }
         VectorIterator& operator--() {
-            if (_cur > 0) {
+            if (!_isEnd && _cur > 0) {
                 --_cur;
             }
             return* this;
@@ -113,35 +125,40 @@ private:
             return tmp;
         }
         bool operator==(const VectorIterator& other) {
-            return _cur == other._cur;
+            return (_isEnd == other._isEnd && _isEnd == true)
+                    || (_vector == other._vector && _cur == other._cur
+                        && _version == other._version && _isEnd == other._isEnd);
         }
         bool operator==(const VectorIterator& other) const {
-            return _cur == other._cur;
+            return (_isEnd == other._isEnd && _isEnd == true)
+                    || (_vector == other._vector && _cur == other._cur
+                        && _version == other._version && _isEnd == other._isEnd);
         }
         bool operator!=(const VectorIterator& other) {
-            return _cur != other._cur;
+            return !operator ==(other);
         }
         bool operator!=(const VectorIterator& other) const {
-            return _cur != other._cur;
+            return !operator ==(other);
         }
         T& operator*() {
             if (_cur >= 0) {
-                return _vector->at(_version, _cur);
+                return _vector.at(_version, _cur);
             } else {
                 throw new std::out_of_range("Iterator is out of range");
             }
         }
         T* operator->() {
             if (_cur) {
-                return&(_vector->at(_version, _cur));
+                return&(_vector.at(_version, _cur));
             } else {
                 throw new std::out_of_range("Iterator is out of range");
             }
         }
     private:
-        PersistentVector* _vector;
-        long long _cur;
+        PersistentVector& _vector;
+        size_t _cur;
         size_t _version;
+        bool _isEnd;
     };
 
 public:
@@ -152,24 +169,27 @@ public:
         _versionSizes.push_back(0);
     }
     PersistentVector(const PersistentVector& other)
-        : _fatNodes(other._fatNodes), _versionSizes(other._versionSizes), _versions(other._versions)
-    {}
+            : _fatNodes(other._fatNodes), _versionSizes(other._versionSizes), _versions(other._versions) {
+        _versionSizes.push_back(0);
+    }
     PersistentVector(PersistentVector&& other)
             : _fatNodes(other._fatNodes), _versionSizes(other._versionSizes), _versions(other._versions) {
         other.clear();
     }
     PersistentVector& operator=(const PersistentVector& other) {
         if (*this != other) {
-            if (!_fatNodes.empty()) {
-                clear();
-            }
+            clear();
             _fatNodes = other._fatNodes;
+            _versionSizes = other._versionSizes;
+            _versions = other._versions;
         }
         return *this;
     }
     PersistentVector& operator=(PersistentVector&& other) {
         if (*this != other) {
             std::swap(_fatNodes, other._fatNodes);
+            std::swap(_versionSizes, other._versionSizes);
+            std::swap(_versions, other._versions);
         }
         return *this;
     }
@@ -191,6 +211,9 @@ public:
     }
 
     inline value_type& at(const size_t version, const size_t index) {
+        if (index >= _versionSizes[version]) {
+            throw new std::out_of_range("Index out of range: " + index);
+        }
         return _getLatestVersion(version, index);
     }
 
@@ -201,29 +224,29 @@ public:
         return _getLatestVersion(version, 0);
     }
     value_type& back(const size_t version) {
-        return _getLatestVersion(version, _fatNodes.size() - 1);
+        return _getLatestVersion(version, _versionSizes[version] - 1);
     }
     const value_type& back(const size_t version) const {
-        return _getLatestVersion(version, _fatNodes.size() - 1);
+        return _getLatestVersion(version, _versionSizes[version] - 1);
     }
 
     inline iterator begin(const size_t version) noexcept {
-        return iterator(this, 0, version);
+        return iterator(*this, version, 0);
     }
     inline iterator end() noexcept {
-        return iterator(this, -1);
+        return iterator(*this);
     }
     inline const_iterator begin(const size_t version) const noexcept {
-        return const_iterator(this, 0, version);
+        return const_iterator(*this, version, 0);
     }
     inline const_iterator end() const noexcept {
-        return const_iterator(this, -1);
+        return const_iterator(*this);
     }
     inline const_iterator cbegin(const size_t version) const noexcept {
-        return const_iterator(this, 0, version);
+        return const_iterator(*this, version, 0);
     }
     inline const_iterator cend() const noexcept {
-        return const_iterator(this, -1);
+        return const_iterator(*this);
     }
     inline bool empty(const size_t version) const noexcept {
         return _versionSizes[version] == 0;
@@ -233,6 +256,9 @@ public:
     }
     inline void clear() noexcept {
         _fatNodes.clear();
+        _versions.clear();
+        _versionSizes.clear();
+        _versionSizes.push_back(0);
     }
 //    inline iterator insert(const size_t version, iterator pos, const value_type& value) {
 
