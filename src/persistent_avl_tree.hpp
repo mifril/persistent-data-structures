@@ -32,15 +32,21 @@ private:
 
     struct Version {
         std::shared_ptr<Node> root;
-        size_t number;
+        size_t version;
         size_t size;
 
-        Version(std::shared_ptr<Node> root_, size_t number_, const size_t size_) :
-            root(root_), number(number_), size(size_)
+        Version(std::shared_ptr<Node> root_, size_t version_, const size_t size_) :
+            root(root_), version(version_), size(size_)
         {}
+
+        bool operator==(const Version& other) {
+            return root == other.root && size == other.size && version == other.version;
+        }
+        bool operator==(const Version& other) const {
+            return root == other.root && size == other.size && version == other.version;
+        }
     };
 
-public:
     template<class T>
     class TreeIterator : public std::iterator<std::forward_iterator_tag, T> {
     public:
@@ -127,6 +133,7 @@ public:
         std::shared_ptr<Node> _cur;
     };
 
+public:
     typedef TreeIterator<value_type> iterator;
     typedef TreeIterator<const value_type> const_iterator;
 

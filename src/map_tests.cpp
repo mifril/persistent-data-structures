@@ -20,15 +20,15 @@ TEST_F(PersistentMapTest, ConstructorTest) {
     ASSERT_EQ(1, map2.size(1));
 
 
-//    PersistentMap<std::string, int> map3;
-//    map3 = map1;
-//    ASSERT_EQ(map3.end(), map3.find(1, "nine"));
-//    ASSERT_EQ(map3.end(), map3.find(0, "nine"));
-//    ASSERT_EQ(10, (*(map3.find(1, "ten"))).second);
+    PersistentMap<std::string, int> map3;
+    map3 = map1;
+    ASSERT_EQ(map3.end(), map3.find(1, "nine"));
+    ASSERT_EQ(map3.end(), map3.find(0, "nine"));
+    ASSERT_EQ(10, (*(map3.find(1, "ten"))).second);
 
-//    ASSERT_EQ(10, map3.at(1, "ten"));
-//    ASSERT_EQ(2, map3.size(2));
-//    ASSERT_EQ(1, map3.size(1));
+    ASSERT_EQ(10, map3.at(1, "ten"));
+    ASSERT_EQ(2, map3.size(2));
+    ASSERT_EQ(1, map3.size(1));
 }
 
 TEST_F(PersistentMapTest, InsertTest) {
@@ -48,7 +48,6 @@ TEST_F(PersistentMapTest, InsertTest) {
 
     result = map.insert(1, std::make_pair("nine", 9));
     ASSERT_EQ(true, result.second);
-//    ASSERT_EQ(9, (*(result.first)).second);
 
     ASSERT_EQ(map.end(), map.find(1, "nine"));
     ASSERT_EQ(map.end(), map.find(0, "nine"));
@@ -61,7 +60,6 @@ TEST_F(PersistentMapTest, InsertTest) {
 
     result = map.insert(2, std::make_pair("eight", 8));
     ASSERT_EQ(true, result.second);
-//    ASSERT_EQ(8, (*(result.first)).second);
 
     ASSERT_EQ(map.end(), map.find(2, "eight"));
     ASSERT_EQ(map.end(), map.find(1, "eight"));
@@ -88,6 +86,7 @@ TEST_F(PersistentMapTest, EraseTest) {
     ASSERT_EQ(map.end(), map.find(3, "ten"));
     ASSERT_EQ(10, map.at(1, "ten"));
     ASSERT_EQ(10, map.at(2, "ten"));
+
     ASSERT_EQ(1, map.size(1));
     ASSERT_EQ(2, map.size(2));
     ASSERT_EQ(1, map.size(3));

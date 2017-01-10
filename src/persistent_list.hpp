@@ -23,21 +23,27 @@ private:
         {}
     };
 
-    struct Version {
+    struct VersionData {
         std::shared_ptr<Node> root;
         size_t size;
-        size_t number;
+        size_t version;
 
-        Version(std::shared_ptr<Node> root_, size_t number_, const size_t size_) :
-            root(root_), size(size_), number(number_)
+        VersionData(std::shared_ptr<Node> root_, size_t version_, const size_t size_) :
+            root(root_), size(size_), version(version_)
         {}
         
         value_type& front() {
             return root->value;
         }
+
+        bool operator==(const VersionData& other) {
+            return root == other.root && size == other.size && version == other.version;
+        }
+        bool operator==(const VersionData& other) const {
+            return root == other.root && size == other.size && version == other.version;
+        }
     };
 
-public:
     template<class Y>
     class ListIterator : public std::iterator<std::forward_iterator_tag, Y> {
     public:
@@ -103,11 +109,13 @@ public:
         std::shared_ptr<Node> _cur;
     };
 
+
+public:
     typedef ListIterator<value_type> iterator;
     typedef ListIterator<const value_type> const_iterator;
 
     PersistentList() {
-        _versions.push_back(Version(nullptr, 0, 0));
+        _versions.push_back(VersionData(nullptr, 0, 0));
     }
     PersistentList(const PersistentList& other) : _versions (other._versions)
     {}
@@ -131,6 +139,19 @@ public:
     }
     ~PersistentList() {
         clear();
+    }
+
+    bool operator==(const PersistentList& other) {
+        return _versions == other._versions;
+    }
+    bool operator==(const PersistentList& other) const {
+        return _versions == other._versions;
+    }
+    bool operator!=(const PersistentList& other) {
+        return _versions != other._versions;
+    }
+    bool operator!=(const PersistentList& other) const {
+        return _versions != other._versions;
     }
 
     value_type& front(const size_t srcVersion) {
@@ -216,10 +237,10 @@ public:
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
         if (!root) {
-            _versions.push_back(Version(newNode, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
         } else if (pos == begin(srcVersion)) {
             newNode->next = root;
-            _versions.push_back(Version(newNode, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
         } else {
             auto curOld = root;
             auto curOldIt = iterator(root);
@@ -232,13 +253,16 @@ public:
                 }
                 if (prevNew) {
                     prevNew->next = copyCur;
+                    prevNew = prevNew->next;
+                } else {
+                    prevNew = copyCur;
                 }
-                prevNew = prevNew->next;
                 ++curOldIt;
                 curOld = curOld->next;
             }
-            prevNew->next = curOld;
-            _versions.push_back(Version(copyRoot, srcVersion + 1, size + 1));
+            prevNew->next = newNode;
+            newNode->next = curOld;
+            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size + 1));
         }
         return iterator(newNode);
     }
@@ -251,10 +275,10 @@ public:
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
         if (!root) {
-            _versions.push_back(Version(newNode, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
         } else if (pos == begin(srcVersion)) {
             newNode->next = root;
-            _versions.push_back(Version(newNode, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
         } else {
             auto curOld = root;
             auto curOldIt = iterator(root);
@@ -272,8 +296,9 @@ public:
                 ++curOldIt;
                 curOld = curOld->next;
             }
-            prevNew->next = curOld;
-            _versions.push_back(Version(copyRoot, srcVersion + 1, size + 1));
+            prevNew->next = newNode;
+            newNode->next = curOld;
+            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size + 1));
         }
         return iterator(newNode);
     }
@@ -285,9 +310,9 @@ public:
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
         if (!root || pos == end()) {
-            return;
+            return end();
         } else if (pos == begin(srcVersion)) {
-            _versions.push_back(Version(root->next, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(root->next, srcVersion + 1, size - 1));
             return iterator(root->next);
         } else {
             auto curOldIt = iterator(root);
@@ -295,7 +320,7 @@ public:
             std::shared_ptr<Node> curNew = nullptr;
             std::shared_ptr<Node> copyRoot = nullptr;
             while (curOldIt != pos) {
-                auto copyCur = std::make_shared<Node>(curOldIt->value);
+                auto copyCur = std::make_shared<Node>(*curOldIt);
                 if (curOldIt == begin(srcVersion)) {
                     copyRoot = copyCur;
                 }
@@ -309,7 +334,7 @@ public:
                 curOld = curOld->next;
             }
             curNew->next = curOld->next;
-            _versions.push_back(Version(copyRoot, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size - 1));
             return iterator(curNew->next);
         }
     }
@@ -319,19 +344,19 @@ public:
         }
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
-        auto erased = *pos;
-        if (!root || !erased) {
-            return;
-        } else if (erased == root) {
-            _versions.push_back(Version(erased->next, srcVersion + 1, size + 1));
-            return iterator(erased->next);
+        if (!root || pos == end()) {
+            return end();
+        } else if (pos == begin(srcVersion)) {
+            _versions.push_back(VersionData(root->next, srcVersion + 1, size - 1));
+            return iterator(root->next);
         } else {
+            auto curOldIt = iterator(root);
             auto curOld = root;
             std::shared_ptr<Node> curNew = nullptr;
             std::shared_ptr<Node> copyRoot = nullptr;
-            while (curOld != erased) {
-                auto copyCur = std::make_shared<Node>(curOld->value);
-                if (curOld == root) {
+            while (curOldIt != pos) {
+                auto copyCur = std::make_shared<Node>(*curOldIt);
+                if (curOldIt == begin(srcVersion)) {
                     copyRoot = copyCur;
                 }
                 if (curNew) {
@@ -340,10 +365,11 @@ public:
                 } else {
                     curNew = copyCur;
                 }
+                ++curOldIt;
                 curOld = curOld->next;
             }
             curNew->next = curOld->next;
-            _versions.push_back(Version(copyRoot, srcVersion + 1, size + 1));
+            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size - 1));
             return iterator(curNew->next);
         }
     }
@@ -352,6 +378,7 @@ public:
     }
     void pop_back(const size_t srcVersion) {
         auto root = _versions[srcVersion].root;
+        auto size = _versions[srcVersion].size;
         auto curOld = root;
         std::shared_ptr<Node> curNew = nullptr;
         std::shared_ptr<Node> copyRoot = nullptr;
@@ -359,14 +386,16 @@ public:
             auto copyCur = std::make_shared<Node>(curOld->value);
             if (curNew) {
                 curNew->next = copyCur;
+                curNew = curNew->next;
+            } else {
+                curNew = copyCur;
             }
             if (curOld == root) {
                 copyRoot = copyCur;
             }
-            curNew = curNew->next;
             curOld = curOld->next;
         }
-        _versions.push_back(Version(copyRoot, srcVersion + 1, size + 1));
+        _versions.push_back(VersionData(copyRoot, srcVersion + 1, size - 1));
     }
     void push_front(const size_t srcVersion, const value_type& value) {
         insert(srcVersion, begin(srcVersion), value);
@@ -380,7 +409,7 @@ public:
 //    }
 
 private:
-    std::vector<Version> _versions;
+    std::vector<VersionData> _versions;
     std::shared_ptr<Node> _root;
 };
 

@@ -10,8 +10,8 @@ TEST_F(PersistentListTest, ConstructorTest) {
     list1.push_back(1, 9);
     list1.push_front(2, 8);
 
-    PersistentList<int> list2;
-    it = list2.begin(3);
+    PersistentList<int> list2 = list1;
+    auto it = list2.begin(3);
     ASSERT_EQ(8, *it);
     ++it;
     ASSERT_EQ(10, *it);
@@ -23,6 +23,10 @@ TEST_F(PersistentListTest, ConstructorTest) {
     ASSERT_EQ(8, list2.front(3));
     ASSERT_EQ(9, list2.back(3));
     ASSERT_EQ(3, list2.size(3));
+
+//    for (auto it = list2.begin(3); it != list2.end(); ++it) {
+//        std::cout << *it << std::endl;
+//    }
 
     PersistentList<int> list3;
     list3 = list1;
@@ -93,7 +97,7 @@ TEST_F(PersistentListTest, PopTest) {
     list.push_front(2, 8);
 
     list.pop_back(3);
-    it = list.begin(4);
+    auto it = list.begin(4);
     ASSERT_EQ(8, *it);
     ++it;
     ASSERT_EQ(10, *it);
@@ -104,8 +108,8 @@ TEST_F(PersistentListTest, PopTest) {
     ASSERT_EQ(10, list.back(4));
     ASSERT_EQ(8, list.front(3));
     ASSERT_EQ(9, list.back(3));
-    ASSERT_EQ(3, list.size(3));
 
+    ASSERT_EQ(3, list.size(3));
     ASSERT_EQ(2, list.size(4));
     ASSERT_EQ(3, list.size(3));
 
