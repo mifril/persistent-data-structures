@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include <utility>
+//#include "persistent_vector.hpp"
 
 template <class T>
 class PersistentList {
@@ -23,24 +24,23 @@ private:
         {}
     };
 
-    struct VersionData {
+    struct Version {
         std::shared_ptr<Node> root;
         size_t size;
-        size_t version;
 
-        VersionData(std::shared_ptr<Node> root_, size_t version_, const size_t size_) :
-            root(root_), size(size_), version(version_)
+        Version(std::shared_ptr<Node> root_, const size_t size_) :
+            root(root_), size(size_)
         {}
         
         value_type& front() {
             return root->value;
         }
 
-        bool operator==(const VersionData& other) {
-            return root == other.root && size == other.size && version == other.version;
+        bool operator==(const Version& other) {
+            return root == other.root && size == other.size;
         }
-        bool operator==(const VersionData& other) const {
-            return root == other.root && size == other.size && version == other.version;
+        bool operator==(const Version& other) const {
+            return root == other.root && size == other.size;
         }
     };
 
@@ -114,7 +114,7 @@ public:
     typedef ListIterator<const value_type> iterator;
 
     PersistentList() {
-        _versions.push_back(VersionData(nullptr, 0, 0));
+        _versions.push_back(Version(nullptr, 0));
     }
     PersistentList(const PersistentList& other) : _versions (other._versions)
     {}
@@ -171,7 +171,7 @@ public:
         }
         return _versions[srcVersion].front();
     }
-    const value_type back(const size_t srcVersion) {
+    value_type back(const size_t srcVersion) {
         if (_versions.empty()) {
             throw new std::out_of_range("List is empty");
         }
@@ -228,10 +228,10 @@ public:
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
         if (!root) {
-            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
+            _versions.push_back(Version(newNode, size + 1));
         } else if (pos == begin(srcVersion)) {
             newNode->next = root;
-            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
+            _versions.push_back(Version(newNode, size + 1));
         } else {
             auto curOld = root;
             auto curOldIt = iterator(root);
@@ -253,7 +253,7 @@ public:
             }
             prevNew->next = newNode;
             newNode->next = curOld;
-            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size + 1));
+            _versions.push_back(Version(copyRoot, size + 1));
         }
         return iterator(newNode);
     }
@@ -267,7 +267,7 @@ public:
         if (!root || pos == end()) {
             return end();
         } else if (pos == begin(srcVersion)) {
-            _versions.push_back(VersionData(root->next, srcVersion + 1, size - 1));
+            _versions.push_back(Version(root->next, size - 1));
             return iterator(root->next);
         } else {
             auto curOldIt = iterator(root);
@@ -289,7 +289,7 @@ public:
                 curOld = curOld->next;
             }
             curNew->next = curOld->next;
-            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size - 1));
+            _versions.push_back(Version(copyRoot, size - 1));
             return iterator(curNew->next);
         }
     }
@@ -315,7 +315,7 @@ public:
             }
             curOld = curOld->next;
         }
-        _versions.push_back(VersionData(copyRoot, srcVersion + 1, size - 1));
+        _versions.push_back(Version(copyRoot, size - 1));
     }
     void push_front(const size_t srcVersion, const value_type& value) {
         insert(srcVersion, begin(srcVersion), value);
@@ -324,12 +324,8 @@ public:
         erase(srcVersion, begin(srcVersion));
     }
 
-//    PesistentVector<T> toVector() {
-
-//    }
-
 private:
-    std::vector<VersionData> _versions;
+    std::vector<Version> _versions;
 };
 
 #endif // PERSISTENT_LIST_HPP

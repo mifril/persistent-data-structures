@@ -145,7 +145,6 @@ public:
     }
     PersistentVector(const PersistentVector& other)
             : _fatNodes(other._fatNodes), _versionSizes(other._versionSizes), _versions(other._versions) {
-        _versionSizes.push_back(0);
     }
     PersistentVector(PersistentVector&& other)
             : _fatNodes(other._fatNodes), _versionSizes(other._versionSizes), _versions(other._versions) {
@@ -252,24 +251,20 @@ public:
         _versionSizes.push_back(_versionSizes[srcVersion] - 1);
     }
 
-//    PersistentVector<T> toVector() {
-
-//    }
-
 private:
     std::vector<FatNode> _fatNodes;
     std::vector<size_t> _versionSizes;
     VersionTree _versions;
 
     const value_type& _getLatestVersion(const size_t maxVersion, const size_t index) const {
-        auto elementVersions = _fatNodes[index].nodeVersions;
-        value_type& versionValue = elementVersions.front().value;
-        for (auto v : elementVersions) {
-            if (_versions.order(v.version, maxVersion)) {
-                versionValue = v.value;
+        auto& elementVersions = _fatNodes[index].nodeVersions;
+        auto pos = elementVersions.end();
+        for (auto it = elementVersions.begin(); it != elementVersions.end(); ++it) {
+            if (_versions.order(it->version, maxVersion)) {
+                pos = it;
             }
         }
-        return versionValue;
+        return pos->value;
     }
 };
 

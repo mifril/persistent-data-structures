@@ -32,18 +32,17 @@ private:
 
     struct Version {
         std::shared_ptr<Node> root;
-        size_t version;
         size_t size;
 
-        Version(std::shared_ptr<Node> root_, size_t version_, const size_t size_) :
-            root(root_), version(version_), size(size_)
+        Version(std::shared_ptr<Node> root_,  const size_t size_) :
+            root(root_), size(size_)
         {}
 
         bool operator==(const Version& other) {
-            return root == other.root && size == other.size && version == other.version;
+            return root == other.root && size == other.size;
         }
         bool operator==(const Version& other) const {
-            return root == other.root && size == other.size && version == other.version;
+            return root == other.root && size == other.size;
         }
     };
 
@@ -135,7 +134,7 @@ public:
     typedef TreeIterator<const value_type> iterator;
 
     PersistentAVLTree() {
-        _versions.push_back(Version(nullptr, 0, 0));
+        _versions.push_back(Version(nullptr, 0));
     }
     PersistentAVLTree(const PersistentAVLTree& other) : _versions(other._versions)
     {}
@@ -210,11 +209,11 @@ public:
 
         if (!root) {
             std::shared_ptr<Node> newRoot = std::make_shared<Node>(key, value);
-            _versions.push_back(Version(newRoot, srcVersion + 1, size + 1));
+            _versions.push_back(Version(newRoot, size + 1));
             return std::make_pair(iterator(newRoot), true);
         }
         std::shared_ptr<Node> newRoot = _insert(root, key, value);
-        _versions.push_back(Version(newRoot, srcVersion + 1, size + 1));
+        _versions.push_back(Version(newRoot, size + 1));
         return std::make_pair(iterator(newRoot), true);
     }
 
@@ -226,7 +225,7 @@ public:
         auto root = _versions[srcVersion].root;
         auto size = _versions[srcVersion].size;
         std::shared_ptr<Node> newRoot = _erase(root, key);
-        _versions.push_back(Version(newRoot, srcVersion + 1, size - 1));
+        _versions.push_back(Version(newRoot,  size - 1));
     }
 
     inline iterator find(const size_t version, const Key& key) const {
