@@ -154,13 +154,12 @@ public:
         return _versions == other._versions;
     }
     bool operator!=(const PersistentAVLTree& other) {
-        return _versions != other._versions;
+        return !operator==(other);
     }
     bool operator!=(const PersistentAVLTree& other) const {
-        return _versions != other._versions;
+        return !operator==(other);
     }
 
-    // invalid return value. now returns iterator to new Root, but should return iterator to inserted element
     std::pair<iterator, bool> insert(const size_t srcVersion, const Key& key, const Value& value) {
         if (_versions.size() - 1 < srcVersion) {
             throw new std::out_of_range("Invalid version: " + srcVersion);

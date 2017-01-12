@@ -142,16 +142,16 @@ public:
     }
 
     bool operator==(const PersistentList& other) {
-        return _versions == other._versions;
+        return _versions == other._versions && _root == other._root;
     }
     bool operator==(const PersistentList& other) const {
-        return _versions == other._versions;
+        return _versions == other._versions && _root == other._root;
     }
     bool operator!=(const PersistentList& other) {
-        return _versions != other._versions;
+        return !operator==(other);
     }
     bool operator!=(const PersistentList& other) const {
-        return _versions != other._versions;
+        return !operator==(other);
     }
 
     value_type& front(const size_t srcVersion) {
