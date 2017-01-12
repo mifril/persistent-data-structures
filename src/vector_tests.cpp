@@ -1,6 +1,7 @@
-#include <gtest/gtest.h>
-#include "persistent_vector.hpp"
 #include "tests.hpp"
+#include "persistent_vector.hpp"
+#include "persistent_list.hpp"
+#include "persistent_map.hpp"
 
 TEST_F(PersistentVectorTest, ConstructorTest) {
     PersistentVector<int> vector1;
@@ -222,4 +223,55 @@ TEST_F(PersistentVectorTest, FullyPersistenceTest) {
     ASSERT_EQ(3, vector.size(4));
     ASSERT_EQ(2, vector.size(2));
     ASSERT_EQ(1, vector.size(5));
+}
+
+TEST_F(PersistentVectorTest, NestedListTest) {
+    PersistentList<int> l1;
+    l1.push_back(0, 1);
+    l1.push_back(1, 2);
+    l1.push_back(2, 3);
+    PersistentList<int> l2;
+    l2.push_back(0, 4);
+    l2.push_back(1, 5);
+
+    PersistentVector<PersistentList<int> > vector;
+    vector.push_back(0, l1);
+    vector.push_back(1, l2);
+    vector.push_back(0, l2);
+
+    ASSERT_EQ(l1, vector.front(1));
+    ASSERT_EQ(l1, vector.back(1));
+    ASSERT_EQ(l1, vector.front(2));
+    ASSERT_EQ(l2, vector.back(2));
+    ASSERT_EQ(l2, vector.front(3));
+    ASSERT_EQ(l2, vector.back(3));
+
+    ASSERT_EQ(1, vector.size(1));
+    ASSERT_EQ(2, vector.size(2));
+    ASSERT_EQ(1, vector.size(3));
+}
+
+TEST_F(PersistentVectorTest, NestedMapTest) {
+    PersistentMap<std::string, int> m1;
+    m1.insert(0, std::make_pair("ten", 10));
+    m1.insert(1, std::make_pair("nine", 9));
+    PersistentMap<std::string, int> m2;
+    m2.insert(0, std::make_pair("one", 1));
+    m2.insert(1, std::make_pair("two", 2));
+
+    PersistentVector<PersistentMap<std::string, int>  > vector;
+    vector.push_back(0, m1);
+    vector.push_back(1, m2);
+    vector.push_back(0, m2);
+
+    ASSERT_EQ(m1, vector.front(1));
+    ASSERT_EQ(m1, vector.back(1));
+    ASSERT_EQ(m1, vector.front(2));
+    ASSERT_EQ(m2, vector.back(2));
+    ASSERT_EQ(m2, vector.front(3));
+    ASSERT_EQ(m2, vector.back(3));
+
+    ASSERT_EQ(1, vector.size(1));
+    ASSERT_EQ(2, vector.size(2));
+    ASSERT_EQ(1, vector.size(3));
 }

@@ -1,6 +1,7 @@
-#include <gtest/gtest.h>
-#include "persistent_list.hpp"
 #include "tests.hpp"
+#include "persistent_list.hpp"
+#include "persistent_vector.hpp"
+#include "persistent_map.hpp"
 
 TEST_F(PersistentListTest, ConstructorTest) {
     PersistentList<int> list1;
@@ -23,10 +24,6 @@ TEST_F(PersistentListTest, ConstructorTest) {
     ASSERT_EQ(8, list2.front(3));
     ASSERT_EQ(9, list2.back(3));
     ASSERT_EQ(3, list2.size(3));
-
-//    for (auto it = list2.begin(3); it != list2.end(); ++it) {
-//        std::cout << *it << std::endl;
-//    }
 
     PersistentList<int> list3;
     list3 = list1;
@@ -190,4 +187,56 @@ TEST_F(PersistentListTest, FullyPersistenceTest) {
     ASSERT_EQ(3, list.size(3));
     ASSERT_EQ(1, list.size(4));
     ASSERT_EQ(2, list.size(5));
+}
+
+TEST_F(PersistentListTest, NestedVectorTest) {
+    PersistentVector<int> v1;
+    v1.push_back(0, 1);
+    v1.push_back(1, 2);
+    v1.push_back(2, 3);
+    PersistentVector<int> v2;
+    v2.push_back(0, 4);
+    v2.push_back(1, 5);
+    v2.push_back(2, 6);
+
+    PersistentList<PersistentVector<int> > list;
+    list.push_back(0, v1);
+    list.push_back(1, v2);
+    list.push_back(0, v2);
+
+    ASSERT_EQ(v1, list.front(1));
+    ASSERT_EQ(v1, list.back(1));
+    ASSERT_EQ(v1, list.front(2));
+    ASSERT_EQ(v2, list.back(2));
+    ASSERT_EQ(v2, list.front(3));
+    ASSERT_EQ(v2, list.back(3));
+
+    ASSERT_EQ(1, list.size(1));
+    ASSERT_EQ(2, list.size(2));
+    ASSERT_EQ(1, list.size(3));
+}
+
+TEST_F(PersistentListTest, NestedMapTest) {
+    PersistentMap<std::string, int> m1;
+    m1.insert(0, std::make_pair("ten", 10));
+    m1.insert(1, std::make_pair("nine", 9));
+    PersistentMap<std::string, int> m2;
+    m2.insert(0, std::make_pair("one", 1));
+    m2.insert(1, std::make_pair("two", 2));
+
+    PersistentList<PersistentMap<std::string, int>  > list;
+    list.push_back(0, m1);
+    list.push_back(1, m2);
+    list.push_back(0, m2);
+
+    ASSERT_EQ(m1, list.front(1));
+    ASSERT_EQ(m1, list.back(1));
+    ASSERT_EQ(m1, list.front(2));
+    ASSERT_EQ(m2, list.back(2));
+    ASSERT_EQ(m2, list.front(3));
+    ASSERT_EQ(m2, list.back(3));
+
+    ASSERT_EQ(1, list.size(1));
+    ASSERT_EQ(2, list.size(2));
+    ASSERT_EQ(1, list.size(3));
 }

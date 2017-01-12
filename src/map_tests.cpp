@@ -1,4 +1,6 @@
 #include "persistent_map.hpp"
+#include "persistent_vector.hpp"
+#include "persistent_list.hpp"
 #include "tests.hpp"
 
 typedef std::pair<PersistentMap<std::string, int>::iterator, bool> insert_pair;
@@ -128,3 +130,54 @@ TEST_F(PersistentMapTest, FullyPersistenceTest) {
     ASSERT_EQ(1, map.size(3));
 }
 
+TEST_F(PersistentMapTest, NestedVectorTest) {
+    PersistentVector<int> v1;
+    v1.push_back(0, 1);
+    v1.push_back(1, 2);
+    v1.push_back(2, 3);
+    PersistentVector<int> v2;
+    v2.push_back(0, 4);
+    v2.push_back(1, 5);
+    v2.push_back(2, 6);
+
+    PersistentMap<std::string, PersistentVector<int> > map;
+    map.insert(0, std::make_pair("1", v1));
+    map.insert(1, std::make_pair("2", v2));
+    map.insert(0, std::make_pair("2", v2));
+
+    ASSERT_EQ(v1, (*(map.find(1, "1"))).second);
+    ASSERT_EQ(v1, (*(map.find(2, "1"))).second);
+    ASSERT_EQ(v2, (*(map.find(2, "2"))).second);
+    ASSERT_EQ(v2, (*(map.find(3, "2"))).second);
+    ASSERT_EQ(map.end(), map.find(3, "1"));
+
+    ASSERT_EQ(1, map.size(1));
+    ASSERT_EQ(2, map.size(2));
+    ASSERT_EQ(1, map.size(3));
+}
+
+TEST_F(PersistentMapTest, NestedListTest) {
+    PersistentList<int> l1;
+    l1.push_back(0, 1);
+    l1.push_back(1, 2);
+    l1.push_back(2, 3);
+    PersistentList<int> l2;
+    l2.push_back(0, 4);
+    l2.push_back(1, 5);
+    l2.push_back(2, 6);
+
+    PersistentMap<std::string, PersistentList<int> > map;
+    map.insert(0, std::make_pair("1", l1));
+    map.insert(1, std::make_pair("2", l2));
+    map.insert(0, std::make_pair("2", l2));
+
+    ASSERT_EQ(l1, (*(map.find(1, "1"))).second);
+    ASSERT_EQ(l1, (*(map.find(2, "1"))).second);
+    ASSERT_EQ(l2, (*(map.find(2, "2"))).second);
+    ASSERT_EQ(l2, (*(map.find(3, "2"))).second);
+    ASSERT_EQ(map.end(), map.find(3, "1"));
+
+    ASSERT_EQ(1, map.size(1));
+    ASSERT_EQ(2, map.size(2));
+    ASSERT_EQ(1, map.size(3));
+}
