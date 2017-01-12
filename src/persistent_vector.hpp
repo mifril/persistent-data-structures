@@ -61,7 +61,7 @@ private:
             if (*this != other) {
                 _vector = other._vector;
                 _cur = other._cur;
-                _version - other._version;
+                _version = other._version;
                 _isEnd = other._isEnd;
             }
             return* this;
@@ -116,16 +116,16 @@ private:
         bool operator!=(const VectorIterator& other) const {
             return !operator ==(other);
         }
-        T& operator*() {
+        const value_type& operator*() {
             if (_cur >= 0) {
                 return _vector.at(_version, _cur);
             } else {
                 throw new std::out_of_range("Iterator is out of range");
             }
         }
-        T* operator->() {
+        const value_type* operator->() {
             if (_cur) {
-                return&(_vector.at(_version, _cur));
+                return &(_vector.at(_version, _cur));
             } else {
                 throw new std::out_of_range("Iterator is out of range");
             }
@@ -138,8 +138,7 @@ private:
     };
 
 public:
-    typedef VectorIterator<value_type> iterator;
-    typedef VectorIterator<const value_type> const_iterator;
+    typedef VectorIterator<const value_type> iterator;
 
     PersistentVector() {
         _versionSizes.push_back(0);
@@ -186,21 +185,25 @@ public:
         return !operator ==(other);
     }
 
-    inline value_type& at(const size_t version, const size_t index) {
+    inline const value_type& at(const size_t version, const size_t index) const {
         if (index >= _versionSizes[version]) {
             throw new std::out_of_range("Index out of range: " + index);
         }
         return _getLatestVersion(version, index);
     }
 
-    value_type& front(const size_t version) {
-        return _getLatestVersion(version, 0);
+    void update(const size_t srcVersion, const size_t index, const value_type& value) {
+        if (index >= _versionSizes[srcVersion]) {
+            throw new std::out_of_range("Index out of range: " + index);
+        }
+        size_t version = _versions.size();
+        _versions.insert(version, srcVersion);
+        _versionSizes.push_back(_versionSizes[srcVersion]);
+        _fatNodes[index].nodeVersions.push_back(VersionValue(version, value));
     }
+
     const value_type& front(const size_t version) const {
         return _getLatestVersion(version, 0);
-    }
-    value_type& back(const size_t version) {
-        return _getLatestVersion(version, _versionSizes[version] - 1);
     }
     const value_type& back(const size_t version) const {
         return _getLatestVersion(version, _versionSizes[version] - 1);
@@ -212,17 +215,11 @@ public:
     inline iterator end() noexcept {
         return iterator(*this);
     }
-    inline const_iterator begin(const size_t version) const noexcept {
-        return const_iterator(*this, version, 0);
+    inline iterator begin(const size_t version) const noexcept {
+        return iterator(*this, version, 0);
     }
-    inline const_iterator end() const noexcept {
-        return const_iterator(*this);
-    }
-    inline const_iterator cbegin(const size_t version) const noexcept {
-        return const_iterator(*this, version, 0);
-    }
-    inline const_iterator cend() const noexcept {
-        return const_iterator(*this);
+    inline iterator end() const noexcept {
+        return iterator(*this);
     }
     inline bool empty(const size_t version) const noexcept {
         return _versionSizes[version] == 0;
@@ -230,18 +227,24 @@ public:
     inline size_t size(const size_t version) const noexcept {
         return _versionSizes[version];
     }
+    inline size_t versionsNumber() const {
+        return _versions.size();
+    }
     inline void clear() noexcept {
         _fatNodes.clear();
         _versions.clear();
         _versionSizes.clear();
         _versionSizes.push_back(0);
     }
+
     void push_back(const size_t srcVersion, const value_type& value) {
         size_t version = _versions.size();
         _versions.insert(version, srcVersion);
 
         _versionSizes.push_back(_versionSizes[srcVersion] + 1);
-        _fatNodes.push_back(FatNode());
+        if (_fatNodes.size() < _versionSizes[version]) {
+            _fatNodes.push_back(FatNode());
+        }
         _fatNodes[_versionSizes[version] - 1].nodeVersions.push_back(VersionValue(version, value));
     }
     void pop_back(const size_t srcVersion) {
@@ -258,7 +261,7 @@ private:
     std::vector<size_t> _versionSizes;
     VersionTree _versions;
 
-    value_type& _getLatestVersion(const size_t maxVersion, const size_t index) {
+    const value_type& _getLatestVersion(const size_t maxVersion, const size_t index) const {
         auto elementVersions = _fatNodes[index].nodeVersions;
         value_type& versionValue = elementVersions.front().value;
         for (auto v : elementVersions) {

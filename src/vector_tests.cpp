@@ -107,7 +107,6 @@ TEST_F(PersistentVectorTest, PopTest) {
 
     ASSERT_EQ(3, vector.size(3));
     ASSERT_EQ(2, vector.size(4));
-    ASSERT_EQ(3, vector.size(3));
 
     vector.pop_back(4);
     it = vector.begin(5);
@@ -140,4 +139,87 @@ TEST_F(PersistentVectorTest, PopTest) {
     ASSERT_EQ(2, vector.size(6));
 }
 
+TEST_F(PersistentVectorTest, RandomAccessTest) {
+    PersistentVector<int> vector;
 
+    vector.push_back(0, 10);
+    vector.push_back(1, 9);
+    vector.push_back(2, 8);
+
+    ASSERT_EQ(10, vector.at(1, 0));
+
+    ASSERT_EQ(10, vector.at(2, 0));
+    ASSERT_EQ(9, vector.at(2, 1));
+
+    ASSERT_EQ(10, vector.at(3, 0));
+    ASSERT_EQ(9, vector.at(3, 1));
+    ASSERT_EQ(8, vector.at(3, 2));
+
+    vector.update(3, 1, 90);
+    ASSERT_EQ(10, vector.at(3, 0));
+    ASSERT_EQ(9, vector.at(3, 1));
+    ASSERT_EQ(8, vector.at(3, 2));
+    ASSERT_EQ(10, vector.at(4, 0));
+    ASSERT_EQ(90, vector.at(4, 1));
+    ASSERT_EQ(8, vector.at(4, 2));
+    ASSERT_EQ(3, vector.size(3));
+    ASSERT_EQ(3, vector.size(4));
+}
+
+TEST_F(PersistentVectorTest, FullyPersistenceTest) {
+    PersistentVector<int> vector;
+
+    vector.push_back(0, 10);
+    vector.push_back(1, 9);
+    vector.push_back(2, 8);
+
+    vector.push_back(2, 7);
+    auto it = vector.begin(4);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(9, *it);
+    ++it;
+    ASSERT_EQ(7, *it);
+    ++it;
+    ASSERT_EQ(vector.end(), it);
+
+    it = vector.begin(3);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(9, *it);
+    ++it;
+    ASSERT_EQ(8, *it);
+    ++it;
+    ASSERT_EQ(vector.end(), it);
+
+    ASSERT_EQ(10, vector.front(4));
+    ASSERT_EQ(7, vector.back(4));
+    ASSERT_EQ(10, vector.front(3));
+    ASSERT_EQ(8, vector.back(3));
+    ASSERT_EQ(10, vector.front(2));
+    ASSERT_EQ(9, vector.back(2));
+
+    ASSERT_EQ(3, vector.size(3));
+    ASSERT_EQ(3, vector.size(4));
+    ASSERT_EQ(2, vector.size(2));
+
+    vector.pop_back(2);
+    it = vector.begin(5);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(vector.end(), it);
+
+    ASSERT_EQ(10, vector.front(4));
+    ASSERT_EQ(7, vector.back(4));
+    ASSERT_EQ(10, vector.front(3));
+    ASSERT_EQ(8, vector.back(3));
+    ASSERT_EQ(10, vector.front(2));
+    ASSERT_EQ(9, vector.back(2));
+    ASSERT_EQ(10, vector.front(5));
+    ASSERT_EQ(10, vector.back(5));
+
+    ASSERT_EQ(3, vector.size(3));
+    ASSERT_EQ(3, vector.size(4));
+    ASSERT_EQ(2, vector.size(2));
+    ASSERT_EQ(1, vector.size(5));
+}
