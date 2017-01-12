@@ -110,3 +110,21 @@ TEST_F(PersistentMapTest, EraseTest) {
     ASSERT_FALSE(map.empty(2));
     ASSERT_FALSE(map.empty(1));
 }
+
+TEST_F(PersistentMapTest, FullyPersistenceTest) {
+    PersistentMap<std::string, int> map;
+    map.insert(0, std::make_pair("ten", 10));
+    map.insert(1, std::make_pair("nine", 9));
+
+    map.insert(0, std::make_pair("one", 1));
+
+    ASSERT_EQ(1, (*(map.find(3, "one"))).second);
+    ASSERT_EQ(map.end(), map.find(3, "nine"));
+    ASSERT_EQ(map.end(), map.find(3, "ten"));
+    ASSERT_EQ(1, map.at(3, "one"));
+
+    ASSERT_EQ(1, map.size(1));
+    ASSERT_EQ(2, map.size(2));
+    ASSERT_EQ(1, map.size(3));
+}
+

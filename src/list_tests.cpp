@@ -109,7 +109,6 @@ TEST_F(PersistentListTest, PopTest) {
     ASSERT_EQ(8, list.front(3));
     ASSERT_EQ(9, list.back(3));
 
-    ASSERT_EQ(3, list.size(3));
     ASSERT_EQ(2, list.size(4));
     ASSERT_EQ(3, list.size(3));
 
@@ -144,4 +143,51 @@ TEST_F(PersistentListTest, PopTest) {
     ASSERT_EQ(2, list.size(6));
 }
 
+TEST_F(PersistentListTest, FullyPersistenceTest) {
+    PersistentList<int> list;
 
+    list.push_back(0, 10);
+    list.push_back(1, 9);
+    list.push_front(2, 8);
+
+    list.pop_back(2);
+    auto it = list.begin(4);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(list.end(), it);
+
+    ASSERT_EQ(10, list.front(4));
+    ASSERT_EQ(10, list.back(4));
+    ASSERT_EQ(8, list.front(3));
+    ASSERT_EQ(9, list.back(3));
+    ASSERT_EQ(10, list.front(2));
+    ASSERT_EQ(9, list.back(2));
+
+    ASSERT_EQ(2, list.size(2));
+    ASSERT_EQ(3, list.size(3));
+    ASSERT_EQ(1, list.size(4));
+
+    list.push_front(1, 11);
+    it = list.begin(5);
+    ASSERT_EQ(11, *it);
+    ++it;
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(list.end(), it);
+
+    ASSERT_EQ(11, list.front(5));
+    ASSERT_EQ(10, list.back(5));
+    ASSERT_EQ(10, list.front(1));
+    ASSERT_EQ(10, list.back(1));
+    ASSERT_EQ(10, list.front(4));
+    ASSERT_EQ(10, list.back(4));
+    ASSERT_EQ(8, list.front(3));
+    ASSERT_EQ(9, list.back(3));
+    ASSERT_EQ(10, list.front(2));
+    ASSERT_EQ(9, list.back(2));
+
+    ASSERT_EQ(2, list.size(2));
+    ASSERT_EQ(3, list.size(3));
+    ASSERT_EQ(1, list.size(4));
+    ASSERT_EQ(2, list.size(5));
+}
