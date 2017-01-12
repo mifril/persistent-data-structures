@@ -10,29 +10,25 @@
 #include <algorithm>
 #include <iterator>
 
-template <typename VersionData>
 class VersionTree {
 private:
     struct Node {
-        VersionData data;
-        bool inEvent;
+        long version;
         size_t label;
 
-        Node() : data(VersionData()), inEvent(false)
+        Node() : version(NONE_VERSION)
         {}
-        Node(const Node& other) : data(other.data), inEvent(other.inEvent)
+        Node(const Node& other) : version(other.version)
         {}
-        Node(const bool inEvent_) : inEvent(inEvent_)
-        {}
-        Node(const VersionData & data_, const bool inEvent_)
-            : data(data_), inEvent(inEvent_)
+        Node(const long & version_)
+            : version(version_)
         {}
 
         bool operator==(const Node& other) {
-            return data == other.data && inEvent == other.inEvent && label == other.label;
+            return version == other.version;
         }
         bool operator==(const Node& other) const {
-            return data == other.data && inEvent == other.inEvent && label == other.label;
+            return version == other.version;
         }
     };
 
@@ -46,40 +42,30 @@ public:
     {}
 
     bool operator==(const VersionTree& other) {
-        return _events == other._events;
+        return _events == other._events && _labelsNumber == other._labelsNumber
+                && _labelToVersion == other._labelToVersion && _versionToLabel == other._versionToLabel;
     }
     bool operator==(const VersionTree& other) const {
-        return _events == other._events;
+        return _events == other._events && _labelsNumber == other._labelsNumber
+                && _labelToVersion == other._labelToVersion && _versionToLabel == other._versionToLabel;
     }
     bool operator!=(const VersionTree& other) {
-        return _events != other._events;
+        return !operator==(other);
     }
     bool operator!=(const VersionTree& other) const {
-        return _events != other._events;
+        return !operator==(other);
     }
 
-    /* insert data.version after parentVersion */
-    void insert(const VersionData & data, const size_t parentVersion) {
+    /* insert version after parentVersion */
+    void insert(const long & version, const long parentVersion) {
         if (_events.empty()) {
             throw new std::out_of_range("Empty version tree");
         }
         auto it = _events.begin();
         for (; it != _events.end(); ++it) {
-            if (it->data.version == parentVersion) {
-                auto prevLabel = _getLabel(it->data.version);
-                auto next = it;
-                ++next;
-                auto nextLabel = _getLabel(next->data.version);
-
-                if (nextLabel - prevLabel < 2) {
-                    _relabel(prevLabel, nextLabel);
-                    prevLabel = _getLabel(it->data.version);
-                    nextLabel = _getLabel(next->data.version);
-                }
-                _setLabel(data.version, prevLabel + 1);
-
-                auto pos = _events.insert(it, Node(data, false));
-                pos = _events.insert(pos, Node(data, true));
+            if (it->version == parentVersion) {
+                auto pos = _insert(version, it);
+                pos = _insert(-1 * version, pos);
                 break;
             }
         }
@@ -88,10 +74,31 @@ public:
         }
     }
 
-    void remove(const size_t version) {
+    std::list<Node>::iterator _insert(const long version, const std::list<Node>::iterator & prev) {
+        size_t prevLabel = _getLabel(prev->version);
+        auto next = prev;
+        ++next;
+        size_t nextLabel = _getLabel(next->version);
+
+        auto pos = _events.insert(next, Node(version));
+
+        if (nextLabel - prevLabel < 2) {
+            _relabel(prevLabel, nextLabel);
+            prevLabel = _getLabel(prev->version);
+            nextLabel = _getLabel(next->version);
+        }
+        size_t label = prevLabel + 1;
+
+        _labelToVersion[label] = version;
+        _versionToLabel[version] = label;
+
+        return pos;
+    }
+
+    void remove(const long version) {
         bool wasDelete = false;
         for (auto it = _events.begin(); it != _events.end(); ++it) {
-            if (it->data.version == version) {
+            if (it->version == version) {
                 auto next = it;
                 ++next;
                 _events.erase(it);
@@ -106,8 +113,8 @@ public:
     }
 
     /* if lv < rv returns true, else false */
-    bool order(const size_t lv, const size_t rv) {
-        return _getLabel(lv) < _getLabel(rv);
+    bool order(const long lv, const long rv) {
+        return _getLabel(lv) < _getLabel(rv) && _getLabel(-1 * rv) < _getLabel(-1 * lv);
     }
 
     // empty version tree's _events contains only 2 entries for starting version
@@ -124,22 +131,13 @@ public:
         _init();
     }
 
-    const VersionData & getData(const size_t version) const {
-        for (auto it = _events.begin(); it != _events.end(); ++it) {
-            if (it->data.version == version) {
-                return it->data;
-            }
-        }
-        throw new std::out_of_range("No version " + version);
-    }
-
 private:
     std::list<Node> _events;
     size_t _labelsNumber;
-    std::vector<size_t> _labelToVersion;
+    std::vector<long> _labelToVersion;
     std::unordered_map<size_t, size_t> _versionToLabel;
 
-    static const size_t NONE_VERSION;
+    static const long NONE_VERSION;
     static const double OVERFLOW_THRESHOLD_BASE;
 
     void _relabel(const size_t firstLabel, const size_t secondLabel) {
@@ -152,7 +150,7 @@ private:
                 size_t rangeEnd = (rangeSize + 1) * firstRangeNum;
                 size_t rangeDensity = _getRangeDensity(rangeStart, rangeEnd);
 
-                double overflowThreshold = std::pow(OVERFLOW_THRESHOLD_BASE, -1 * (long long)rangeSize);
+                double overflowThreshold = std::pow(OVERFLOW_THRESHOLD_BASE, -1 * rangeSize);
                 if (rangeDensity < overflowThreshold) {
                     _relabelRange(rangeStart, rangeEnd);
                     break;
@@ -223,26 +221,19 @@ private:
         }
     }
 
-    void _setLabel(const size_t version, const size_t label) {
-        _labelToVersion[label] = version;
-        _versionToLabel[version] = label;
-    }
-
-    size_t _getLabel(const size_t version) {
+    size_t _getLabel(const long version) {
         return _versionToLabel[version];
     }
 
     void _init() {
-        _events.push_back(Node(true));
-        _events.push_back(Node(false));
+        _events.push_back(Node(0));
+        _events.push_back(Node(-0));
         _labelToVersion[0] = 0;
         _versionToLabel[0] = 0;
     }
 };
 
-template <typename VersionData>
-const size_t VersionTree<VersionData>::NONE_VERSION = std::numeric_limits<size_t>::max();
-template <typename VersionData>
-const double VersionTree<VersionData>::OVERFLOW_THRESHOLD_BASE = 1.5;
+const long VersionTree::NONE_VERSION = std::numeric_limits<long>::max();
+const double VersionTree::OVERFLOW_THRESHOLD_BASE = 1.5;
 
 #endif // VERSION_TREE_H

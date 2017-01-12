@@ -15,25 +15,6 @@ public:
     typedef T value_type;
 
 private:
-    struct VersionData {
-        size_t version;
-
-        VersionData() : version(0)
-        {}
-        VersionData(const VersionData & other) : version(other.version)
-        {}
-        VersionData(const size_t version_) :
-            version(version_)
-        {}
-
-        bool operator==(const VersionData& other) {
-            return version == other.version;
-        }
-        bool operator==(const VersionData& other) const {
-            return version == other.version;
-        }
-    };
-
     struct VersionValue {
         size_t version;
         T value;
@@ -65,11 +46,6 @@ private:
     public:
         VectorIterator(PersistentVector& vector) : _vector(vector), _isEnd(true)
         {}
-//        VectorIterator(PersistentVector* vector) : _vector(vector), _cur(0), _version(0), _isEnd(false)
-//        {}
-//        VectorIterator(PersistentVector* vector, const size_t version)
-//            : _vector(vector), _version(version), _isEnd(false)
-//        {}
         VectorIterator(PersistentVector& vector, const size_t version, const long long cur)
             : _vector(vector), _cur(cur), _version(version), _isEnd(false)
         {}
@@ -260,28 +236,16 @@ public:
         _versionSizes.clear();
         _versionSizes.push_back(0);
     }
-//    inline iterator insert(const size_t version, iterator pos, const value_type& value) {
-
-//    }
-//    inline iterator insert(const size_t version, const_iterator pos, const value_type& value) {
-
-//    }
-//    inline size_t erase(const size_t version, iterator pos) {
-
-//    }
-//    inline size_t erase(const size_t version, const_iterator pos) {
-
-//    }
     void push_back(const size_t srcVersion, const value_type& value) {
         size_t version = _versions.size();
-        _versions.insert(VersionData(version), srcVersion);
+        _versions.insert(version, srcVersion);
 
         _versionSizes.push_back(_versionSizes[srcVersion] + 1);
         _fatNodes.push_back(FatNode());
         _fatNodes[_versionSizes[version] - 1].nodeVersions.push_back(VersionValue(version, value));
     }
     void pop_back(const size_t srcVersion) {
-        _versions.insert(VersionData(_versions.size()), srcVersion);
+        _versions.insert(_versions.size(), srcVersion);
         _versionSizes.push_back(_versionSizes[srcVersion] - 1);
     }
 
@@ -292,7 +256,7 @@ public:
 private:
     std::vector<FatNode> _fatNodes;
     std::vector<size_t> _versionSizes;
-    VersionTree<VersionData> _versions;
+    VersionTree _versions;
 
     value_type& _getLatestVersion(const size_t maxVersion, const size_t index) {
         auto elementVersions = _fatNodes[index].nodeVersions;
