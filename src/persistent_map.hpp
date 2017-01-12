@@ -16,7 +16,6 @@ public:
     typedef std::pair<const key_type, mapped_type> value_type;
     typedef Comparator comparator_type;
     typedef typename PersistentAVLTree<key_type, mapped_type, comparator_type>::iterator iterator;
-    typedef typename PersistentAVLTree<key_type, mapped_type, comparator_type>::const_iterator const_iterator;
 
     PersistentMap() : _tree (PersistentAVLTree<Key, Value, Comparator>())
     {}
@@ -56,38 +55,31 @@ public:
     }
 
     // Will not create new element (key, Value()) if 'key' does not exist in the tree
-    inline mapped_type& at(const size_t version, const Key& key) {
+    inline const mapped_type& at(const size_t version, const Key& key) {
         auto findResult = _tree.find(version, key);
         return (*(findResult)).second;
     }
-    inline mapped_type& at(const size_t version, Key&& key) {
+    inline const mapped_type& at(const size_t version, Key&& key) {
         Key keyCopy;
         std::swap(key, keyCopy);
         return at(version, keyCopy);
     }
-    inline iterator begin(const size_t version) noexcept {
+
+    inline iterator begin(const size_t version) const noexcept {
         return _tree.begin(version);
     }
-    inline iterator end() noexcept {
+    inline iterator end() const noexcept {
         return _tree.end();
     }
-    inline const_iterator begin(const size_t version) const noexcept {
-        return _tree.cbegin(version);
-    }
-    inline const_iterator end() const noexcept {
-        return _tree.cend();
-    }
-    inline const_iterator cbegin(const size_t version) const noexcept {
-        return _tree.cbegin(version);
-    }
-    inline const_iterator cend() const noexcept {
-        return _tree.cend();
-    }
+
     inline bool empty(const size_t version) const noexcept {
         return _tree.empty(version);
     }
     inline size_t size(const size_t version) const noexcept {
         return _tree.size(version);
+    }
+    inline size_t versionsNumber() const {
+        return _tree.versionsNumber();
     }
     inline void clear() noexcept {
         _tree.clear();
@@ -98,10 +90,7 @@ public:
     inline void erase(const size_t version, const Key& key) {
         return _tree.erase(version, key);
     }
-    inline iterator find(const size_t version, const key_type& key) {
-        return _tree.find(version, key);
-    }
-    inline const_iterator find(const size_t version, const key_type& key) const {
+    inline iterator find(const size_t version, const key_type& key) const {
         return _tree.find(version, key);
     }
 

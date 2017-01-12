@@ -91,14 +91,14 @@ private:
         bool operator!=(const ListIterator& other) const {
             return _cur != other._cur;
         }
-        T& operator*() {
+        const value_type& operator*() {
             if (_cur) {
                 return _cur->value;
             } else {
                 throw new std::out_of_range("Iterator is out of range");
             }
         }
-        T* operator->() {
+        const value_type* operator->() {
             if (_cur) {
                 return &(_cur->value);
             } else {
@@ -111,8 +111,7 @@ private:
 
 
 public:
-    typedef ListIterator<value_type> iterator;
-    typedef ListIterator<const value_type> const_iterator;
+    typedef ListIterator<const value_type> iterator;
 
     PersistentList() {
         _versions.push_back(VersionData(nullptr, 0, 0));
@@ -142,10 +141,10 @@ public:
     }
 
     bool operator==(const PersistentList& other) {
-        return _versions == other._versions && _root == other._root;
+        return _versions == other._versions;
     }
     bool operator==(const PersistentList& other) const {
-        return _versions == other._versions && _root == other._root;
+        return _versions == other._versions;
     }
     bool operator!=(const PersistentList& other) {
         return !operator==(other);
@@ -154,13 +153,13 @@ public:
         return !operator==(other);
     }
 
-    value_type& front(const size_t srcVersion) {
+    value_type front(const size_t srcVersion) {
         if (_versions.empty()) {
             throw new std::out_of_range("List is empty");
         }
         if (!_versions[srcVersion].root) {
             throw new std::out_of_range("This version is empty: " + srcVersion);
-        } 
+        }
         return _versions[srcVersion].front();
     }
     const value_type& front(const size_t srcVersion) const {
@@ -172,7 +171,7 @@ public:
         }
         return _versions[srcVersion].front();
     }
-    value_type& back(const size_t srcVersion) {
+    const value_type back(const size_t srcVersion) {
         if (_versions.empty()) {
             throw new std::out_of_range("List is empty");
         }
@@ -201,23 +200,11 @@ public:
         return cur->value;
     }
 
-    inline iterator begin(const size_t srcVersion) noexcept {
-        return iterator(_versions[srcVersion].root);
+    inline iterator begin(const size_t srcVersion) const noexcept {
+       return iterator(_versions[srcVersion].root);
     }
-    inline iterator end() noexcept {
+    inline iterator end() const noexcept {
         return iterator(nullptr);
-    }
-    inline const_iterator begin(const size_t srcVersion) const noexcept {
-       return const_iterator(_versions[srcVersion].root);
-    }
-    inline const_iterator end() const noexcept {
-        return const_iterator(nullptr);
-    }
-    inline const_iterator cbegin(const size_t srcVersion) const noexcept {
-        return const_iterator(_versions[srcVersion].root);
-    }
-    inline const_iterator cend() const noexcept {
-        return const_iterator(nullptr);
     }
     
     inline bool empty(const size_t srcVersion) const noexcept {
@@ -226,9 +213,13 @@ public:
     inline size_t size(const size_t srcVersion) const noexcept {
         return _versions[srcVersion].size;
     }
+    inline size_t versionsNumber() const {
+        return _versions.size();
+    }
     inline void clear() noexcept {
         _versions.clear();
     }
+
     inline iterator insert(const size_t srcVersion, iterator pos, const value_type& value) {
         if (_versions.size() - 1 < srcVersion) {
             throw new std::out_of_range("Invalid version: " + srcVersion);
@@ -267,78 +258,7 @@ public:
         return iterator(newNode);
     }
 
-    inline iterator insert(const size_t srcVersion, const_iterator pos, const value_type& value) {
-        if (_versions.size() - 1 < srcVersion) {
-            throw new std::out_of_range("Invalid version: " + srcVersion);
-        }
-        auto newNode = std::make_shared<Node>(value);
-        auto root = _versions[srcVersion].root;
-        auto size = _versions[srcVersion].size;
-        if (!root) {
-            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
-        } else if (pos == begin(srcVersion)) {
-            newNode->next = root;
-            _versions.push_back(VersionData(newNode, srcVersion + 1, size + 1));
-        } else {
-            auto curOld = root;
-            auto curOldIt = iterator(root);
-            std::shared_ptr<Node> prevNew = nullptr;
-            std::shared_ptr<Node> copyRoot = nullptr;
-            while (curOldIt != pos) {
-                auto copyCur = std::make_shared<Node>(*curOldIt);
-                if (curOldIt == begin(srcVersion)) {
-                    copyRoot = copyCur;
-                }
-                if (prevNew) {
-                    prevNew->next = copyCur;
-                }
-                prevNew = prevNew->next;
-                ++curOldIt;
-                curOld = curOld->next;
-            }
-            prevNew->next = newNode;
-            newNode->next = curOld;
-            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size + 1));
-        }
-        return iterator(newNode);
-    }
-
     inline iterator erase(const size_t srcVersion, iterator pos) {
-        if (_versions.size() - 1 < srcVersion) {
-            throw new std::out_of_range("Invalid version: " + srcVersion);
-        }
-        auto root = _versions[srcVersion].root;
-        auto size = _versions[srcVersion].size;
-        if (!root || pos == end()) {
-            return end();
-        } else if (pos == begin(srcVersion)) {
-            _versions.push_back(VersionData(root->next, srcVersion + 1, size - 1));
-            return iterator(root->next);
-        } else {
-            auto curOldIt = iterator(root);
-            auto curOld = root;
-            std::shared_ptr<Node> curNew = nullptr;
-            std::shared_ptr<Node> copyRoot = nullptr;
-            while (curOldIt != pos) {
-                auto copyCur = std::make_shared<Node>(*curOldIt);
-                if (curOldIt == begin(srcVersion)) {
-                    copyRoot = copyCur;
-                }
-                if (curNew) {
-                    curNew->next = copyCur;
-                    curNew = curNew->next;
-                } else {
-                    curNew = copyCur;
-                }
-                ++curOldIt;
-                curOld = curOld->next;
-            }
-            curNew->next = curOld->next;
-            _versions.push_back(VersionData(copyRoot, srcVersion + 1, size - 1));
-            return iterator(curNew->next);
-        }
-    }
-    inline iterator erase(const size_t srcVersion, const_iterator pos) {
         if (_versions.size() - 1 < srcVersion) {
             throw new std::out_of_range("Invalid version: " + srcVersion);
         }
@@ -410,7 +330,6 @@ public:
 
 private:
     std::vector<VersionData> _versions;
-    std::shared_ptr<Node> _root;
 };
 
 #endif // PERSISTENT_LIST_HPP

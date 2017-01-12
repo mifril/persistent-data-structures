@@ -54,8 +54,6 @@ private:
         {}
         TreeIterator(std::shared_ptr<Node> node) : _cur(node)
         {}
-        TreeIterator(PersistentAVLTree* tree) : _cur(tree->_root)
-        {}
         TreeIterator(const TreeIterator& other) : _cur(other._cur)
         {}
         TreeIterator(TreeIterator&& other) : _cur(other._cur) {
@@ -134,13 +132,31 @@ private:
     };
 
 public:
-    typedef TreeIterator<value_type> iterator;
-    typedef TreeIterator<const value_type> const_iterator;
+    typedef TreeIterator<const value_type> iterator;
 
     PersistentAVLTree() {
         _versions.push_back(Version(nullptr, 0, 0));
     }
-
+    PersistentAVLTree(const PersistentAVLTree& other) : _versions(other._versions)
+    {}
+    PersistentAVLTree(PersistentAVLTree&& other) : _versions(other._versions) {
+        other.clear();
+    }
+    PersistentAVLTree& operator=(const PersistentAVLTree& other) {
+        if (*this != other) {
+            if (!_versions.empty()) {
+                clear();
+            }
+            _versions = other._versions;
+        }
+        return *this;
+    }
+    PersistentAVLTree& operator=(PersistentAVLTree&& other) {
+        if (*this != other) {
+            std::swap(_versions, other._versions);
+        }
+        return *this;
+    }
     ~PersistentAVLTree() {
         if (!_versions.empty()) {
             clear();
@@ -158,6 +174,30 @@ public:
     }
     bool operator!=(const PersistentAVLTree& other) const {
         return !operator==(other);
+    }
+
+    inline iterator begin(const size_t version) const noexcept {
+        std::shared_ptr<Node> cur = _versions[version].root;
+        while (cur->left) {
+            cur = cur->left;
+        }
+        return iterator(cur);
+    }
+    inline iterator end() const noexcept {
+        return iterator();
+    }
+
+    inline bool empty(const size_t version) const {
+        return _versions[version].root == nullptr;
+    }
+    inline size_t size(const size_t version) const {
+        return _versions[version].size;
+    }
+    inline size_t versionsNumber() const {
+        return _versions.size();
+    }
+    inline void clear() {
+        _versions.clear();
     }
 
     std::pair<iterator, bool> insert(const size_t srcVersion, const Key& key, const Value& value) {
@@ -189,7 +229,7 @@ public:
         _versions.push_back(Version(newRoot, srcVersion + 1, size - 1));
     }
 
-    inline iterator find(const size_t version, const Key& key) {
+    inline iterator find(const size_t version, const Key& key) const {
         auto cur = _versions[version].root;
         if (!cur) {
             return end();
@@ -209,52 +249,6 @@ public:
         return end();
     }
 
-    inline void clear() {
-        _versions.clear();
-    }
-
-    inline bool empty(const size_t version) const {
-        return _versions[version].root == nullptr;
-    }
-
-    inline size_t size(const size_t version) const {
-        return _versions[version].size;
-    }
-
-    inline size_t versionsNumber() const {
-        return _versions.size();
-    }
-
-    inline iterator begin(const size_t version) noexcept {
-        std::shared_ptr<Node> cur = _versions[version].root;
-        while (cur->left) {
-            cur = cur->left;
-        }
-        return iterator(cur);
-    }
-
-    inline iterator end() noexcept {
-        return iterator();
-    }
-
-    inline const_iterator cbegin(const size_t version) const noexcept {
-        std::shared_ptr<Node> cur = _versions[version].root;
-        while (cur->left) {
-            cur = cur->left;
-        }
-        return const_iterator(cur);
-    }
-
-    inline const_iterator cend() const noexcept {
-        return const_iterator();
-    }
-
-    void preOrder(const size_t version) {
-        std::cout << "Size: " << size(version) << "; ";
-       _preOrder(_versions[version].root);
-       std::cout << std::endl;
-    }
-
 private:
     std::vector<Version> _versions;
     Comparator _comparator;
@@ -265,29 +259,17 @@ private:
         copy->right = node->right;
         return copy;
     }
-
-    void _preOrder(Node *node) {
-        if (node) {
-            std::cout << node->key() << ' ';
-            _preOrder(node->left);
-            _preOrder(node->right);
-        }
-    }
-
     unsigned int _height(std::shared_ptr<Node> node) {
         return node ? node->height : 0;
     }
-
     int _getBalance(std::shared_ptr<Node> node) {
         return _height(node->right) - _height(node->left);
     }
-
     void _fixHeight(std::shared_ptr<Node> node) {
         unsigned int hl = _height(node->left);
         unsigned int hr = _height(node->right);
         node->height = (hl > hr ? hl : hr) + 1;
     }
-
     std::shared_ptr<Node> _rotateRight(std::shared_ptr<Node> node) {
         std::shared_ptr<Node> l = node->left;
         node->left = l->right;
@@ -296,7 +278,6 @@ private:
         _fixHeight(l);
         return l;
     }
-
     std::shared_ptr<Node> _rotateleft(std::shared_ptr<Node> node) {
         std::shared_ptr<Node> r = node->right;
         node->right = r->left;
@@ -305,7 +286,6 @@ private:
         _fixHeight(r);
         return r;
     }
-
     std::shared_ptr<Node> _balance(std::shared_ptr<Node> node) {
         _fixHeight(node);
         if (_getBalance(node) == 2) {
@@ -322,7 +302,6 @@ private:
         }
         return node;
     }
-
     std::shared_ptr<Node> _insert(std::shared_ptr<Node> root, const Key& key, const Value& value) {
         if (!root) {
             return std::make_shared<Node>(key, value);
@@ -337,11 +316,9 @@ private:
         }
         return _balance(copyP);
     }
-
     std::shared_ptr<Node> _findMin(std::shared_ptr<Node> root) {
         return root->left ? _findMin(root->left) : root;
     }
-
     std::shared_ptr<Node> _removeMin(std::shared_ptr<Node> root) {
         if (!root->left) {
             return root->right;
@@ -349,7 +326,6 @@ private:
         root->left = _removeMin(root->left);
         return _balance(root);
     }
-
     std::shared_ptr<Node> _erase(std::shared_ptr<Node> root, const Key& key) {
         if (!root) {
             return nullptr;
