@@ -33,7 +33,7 @@ private:
     };
 
 public:
-    VersionTree() : _labelsNumber(4), _labelToVersion(_labelsNumber, NONE_VERSION) {
+    VersionTree() : _labelsNumber(2), _labelToVersion(_labelsNumber, NONE_VERSION) {
         _init();
     }
 
@@ -74,11 +74,42 @@ public:
         }
     }
 
+    /* if lv <= rv returns true, else false */
+    bool order(const long lv, const long rv) const {
+        return _getLabel(lv) <= _getLabel(rv) && _getLabel(-1 * rv) <= _getLabel(-1 * lv);
+    }
+
+    // empty version tree's _events contains only 2 entries for starting version
+    bool empty() const {
+        return _events.size() == 2;
+    }
+
+    size_t size() const {
+        return _events.size() / 2;
+    }
+
+    void clear() {
+        _events.clear();
+        _init();
+    }
+
+private:
+    std::list<Node> _events;
+    size_t _labelsNumber;
+    std::vector<long> _labelToVersion;
+    std::unordered_map<long, size_t> _versionToLabel;
+
+    static const long NONE_VERSION;
+    static const double OVERFLOW_THRESHOLD_BASE;
+
     std::list<Node>::iterator _insert(const long version, const std::list<Node>::iterator & prev) {
         size_t prevLabel = _getLabel(prev->version);
         auto next = prev;
         ++next;
         size_t nextLabel = _getLabel(next->version);
+        if (next == _events.end()) {
+            nextLabel = _labelsNumber - 1;
+        }
 
         auto pos = _events.insert(next, Node(version));
 
@@ -87,7 +118,7 @@ public:
             prevLabel = _getLabel(prev->version);
             nextLabel = _getLabel(next->version);
         }
-        size_t label = prevLabel + 1;
+        size_t label = prevLabel + (nextLabel - prevLabel + 1) / 2;
 
         _labelToVersion[label] = version;
         _versionToLabel[version] = label;
@@ -112,45 +143,17 @@ public:
         }
     }
 
-    /* if lv < rv returns true, else false */
-    bool order(const long lv, const long rv) {
-        return _getLabel(lv) < _getLabel(rv) && _getLabel(-1 * rv) < _getLabel(-1 * lv);
-    }
-
-    // empty version tree's _events contains only 2 entries for starting version
-    bool empty() const {
-        return _events.size() == 2;
-    }
-
-    size_t size() const {
-        return _events.size() / 2;
-    }
-
-    void clear() {
-        _events.clear();
-        _init();
-    }
-
-private:
-    std::list<Node> _events;
-    size_t _labelsNumber;
-    std::vector<long> _labelToVersion;
-    std::unordered_map<size_t, size_t> _versionToLabel;
-
-    static const long NONE_VERSION;
-    static const double OVERFLOW_THRESHOLD_BASE;
-
     void _relabel(const size_t firstLabel, const size_t secondLabel) {
         size_t rangeSize = 2;
-        while (rangeSize < _labelsNumber) {
+        while (rangeSize <= _labelsNumber) {
             size_t firstRangeNum = firstLabel / rangeSize;
             size_t secondRangeNum = secondLabel / rangeSize;
             if (firstRangeNum == secondRangeNum) {
                 size_t rangeStart = rangeSize * firstRangeNum;
-                size_t rangeEnd = (rangeSize + 1) * firstRangeNum;
-                size_t rangeDensity = _getRangeDensity(rangeStart, rangeEnd);
+                size_t rangeEnd = rangeSize * (firstRangeNum + 1);
+                double rangeDensity = _getRangeDensity(rangeStart, rangeEnd);
 
-                double overflowThreshold = std::pow(OVERFLOW_THRESHOLD_BASE, -1 * rangeSize);
+                double overflowThreshold = std::pow(OVERFLOW_THRESHOLD_BASE, -1 * (long long)rangeSize);
                 if (rangeDensity < overflowThreshold) {
                     _relabelRange(rangeStart, rangeEnd);
                     break;
@@ -163,18 +166,18 @@ private:
         }
     }
 
-    size_t _getRangeDensity(const size_t rangeStart, const size_t rangeEnd) {
-        size_t density = 0;
+    double _getRangeDensity(const size_t rangeStart, const size_t rangeEnd) {
+        size_t occupied = 0;
         for (size_t i = rangeStart; i < rangeEnd; ++i) {
             if (_labelToVersion[i] != NONE_VERSION) {
-                ++density;
+                ++occupied;
             }
         }
-        return density;
+        return (occupied + 0.0) / (rangeEnd - rangeStart);
     }
 
     void _relabelRange(const size_t rangeStart, const size_t rangeEnd) {
-        std::list<size_t> rangeVersions;
+        std::list<long> rangeVersions;
         for (size_t i = rangeStart; i < rangeEnd; ++i) {
             if (_labelToVersion[i] != NONE_VERSION) {
                 rangeVersions.push_back(_labelToVersion[i]);
@@ -187,7 +190,8 @@ private:
         std::advance(rangeEndIt, rangeEnd);
         std::fill(rangeStartIt, rangeEndIt, NONE_VERSION);
 
-        for (size_t i = rangeStart; i < rangeEnd; i += 2) {
+        size_t step = rangeEnd - rangeStart;
+        for (size_t i = rangeStart; i < rangeEnd; i += step) {
             if (rangeVersions.empty()) {
                 break;
             }
@@ -196,10 +200,11 @@ private:
             _versionToLabel[version] = i;
             rangeVersions.pop_front();
         }
+        _versionToLabel[NONE_VERSION] = _labelsNumber - 1;
     }
 
     void _relabelAll() {
-        std::list<size_t> rangeVersions;
+        std::list<long> rangeVersions;
         for (auto version : _labelToVersion) {
             if (version != NONE_VERSION) {
                 rangeVersions.push_back(version);
@@ -210,7 +215,8 @@ private:
         _labelToVersion.resize(_labelsNumber, NONE_VERSION);
         std::fill(_labelToVersion.begin(), _labelToVersion.end(), NONE_VERSION);
 
-        for (size_t i = 0; i < _labelsNumber; i += 2) {
+        size_t step = _labelsNumber / rangeVersions.size();
+        for (size_t i = 0; i < _labelsNumber; i += step) {
             if (rangeVersions.empty()) {
                 break;
             }
@@ -219,17 +225,20 @@ private:
             _versionToLabel[version] = i;
             rangeVersions.pop_front();
         }
+        _versionToLabel[NONE_VERSION] = _labelsNumber - 1;
     }
 
-    size_t _getLabel(const long version) {
-        return _versionToLabel[version];
+    size_t _getLabel(const long version) const {
+        return _versionToLabel.at(version);
     }
 
     void _init() {
         _events.push_back(Node(0));
-        _events.push_back(Node(-0));
+        _events.push_back(Node(NONE_VERSION));
         _labelToVersion[0] = 0;
         _versionToLabel[0] = 0;
+        _labelToVersion[_labelsNumber - 1] = NONE_VERSION;
+        _versionToLabel[NONE_VERSION] = _labelsNumber - 1;
     }
 };
 
