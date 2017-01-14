@@ -225,6 +225,63 @@ TEST_F(PersistentVectorTest, FullyPersistenceTest) {
     ASSERT_EQ(1, vector.size(5));
 }
 
+TEST_F(PersistentVectorTest, InsertTest) {
+    PersistentVector<int> vector;
+
+    vector.push_back(0, 10);
+    vector.push_back(1, 9);
+    vector.push_back(2, 8);
+
+    auto it = vector.begin(3);
+    ++it;
+    vector.insert(3, it, 7);
+    it = vector.begin(4);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(7, *it);
+    ++it;
+    ASSERT_EQ(9, *it);
+    ++it;
+    ASSERT_EQ(8, *it);
+    ++it;
+    ASSERT_EQ(vector.end(), it);
+    ASSERT_EQ(4, vector.size(4));
+
+    it = vector.end();
+    vector.insert(2, it, 7);
+    it = vector.begin(5);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(9, *it);
+    ++it;
+    ASSERT_EQ(7, *it);
+    ++it;
+    ASSERT_EQ(vector.end(), it);
+
+    ASSERT_EQ(7, vector.back(5));
+    ASSERT_EQ(3, vector.size(5));
+}
+
+TEST_F(PersistentVectorTest, EraseTest) {
+    PersistentVector<int> vector;
+
+    vector.push_back(0, 10);
+    vector.push_back(1, 9);
+    vector.push_back(2, 8);
+
+    auto it = vector.begin(3);
+    ++it;
+    vector.erase(3, it);
+    it = vector.begin(4);
+    ASSERT_EQ(10, *it);
+    ++it;
+    ASSERT_EQ(8, *it);
+    ++it;
+    ASSERT_EQ(vector.end(), it);
+
+    ASSERT_EQ(2, vector.size(4));
+}
+
 TEST_F(PersistentVectorTest, NestedListTest) {
     PersistentList<int> l1;
     l1.push_back(0, 1);

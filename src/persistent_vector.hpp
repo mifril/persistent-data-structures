@@ -43,6 +43,8 @@ private:
 
     template<class Y>
     class VectorIterator : public std::iterator<std::bidirectional_iterator_tag, Y> {
+        friend class PersistentVector;
+
     public:
         VectorIterator(PersistentVector& vector) : _vector(vector), _isEnd(true)
         {}
@@ -236,6 +238,42 @@ public:
         _versionSizes.push_back(0);
     }
 
+    inline void insert(const size_t srcVersion, iterator pos, const value_type& value) {
+        if (pos == end()) {
+            push_back(srcVersion, value);
+            return;
+        }
+        size_t version = _versions.size();
+        _versions.insert(version, srcVersion);
+
+        _versionSizes.push_back(_versionSizes[srcVersion] + 1);
+        if (_fatNodes.size() < _versionSizes[version]) {
+            _fatNodes.push_back(FatNode());
+        }
+
+        auto posIndex = pos._cur;
+        value_type curValue = value;
+        for (size_t i = posIndex; i < _versionSizes[srcVersion]; ++i) {
+            _fatNodes[i].nodeVersions.push_back(VersionValue(version, curValue));
+            curValue = at(srcVersion, i);
+        }
+        _fatNodes[_versionSizes[version] - 1].nodeVersions.push_back(VersionValue(version, curValue));
+    }
+    inline void erase(const size_t srcVersion, iterator pos) {
+        if (pos == end()) {
+            return;
+        }
+        size_t version = _versions.size();
+        _versions.insert(version, srcVersion);
+
+        _versionSizes.push_back(_versionSizes[srcVersion] - 1);
+
+        auto posIndex = pos._cur;
+        for (size_t i = posIndex + 1; i < _versionSizes[srcVersion]; ++i) {
+            value_type curValue = at(srcVersion, i);
+            _fatNodes[i - 1].nodeVersions.push_back(VersionValue(version, curValue));
+        }
+    }
     void push_back(const size_t srcVersion, const value_type& value) {
         size_t version = _versions.size();
         _versions.insert(version, srcVersion);
