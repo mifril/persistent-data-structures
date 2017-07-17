@@ -1,16 +1,20 @@
 # Persistent data structures #
 
-## Основные классы ##
-* PersistentVector<T> - персистентный массив
-* PersistentList<T> - персистентный односвязный список
-* PersistentMap<K, V, Comparator> - персистентный ассоциативный массив
-Вспомогательные классы:
-* PersistentAVLTree<K, V, Comparator> – персистентное АВЛ-дерево, хранящее <K, V> пары в узлах. Требуется для реализации PersistentMap
-* VersionTree – дерево версий. Операция insertAfter(p, q) за O(log k), операция order(p, q) за O(1)
+## Base classes ##
 
-## Алгоритмы ##
-Пусть n – количество элементов в структуре данных, k – количество версий.
+* PersistentVector<T> 
+* PersistentList<T>
+* PersistentMap<K, V, Comparator>
 
-* Персистентный массив. Реализация fat-node. Чтение за O(log k), запись за O(log k). Затраты по памяти: O(kn).
-* Персистентный односвязный список. Реализация с помощью Path Copying алгоритма. Сложность чтения и записи в начало O(1), в произвольное место O(n), требуемая память: O(kn).
-* Персистентный ассоциативный массив. Реализация с помощью персистентного АВЛ-дерева на основе Path Copying алгоритма. Сложность чтения и записи O(log n), требуемая память: O(kn).
+## Additional classes ##
+
+* PersistentAVLTree<K, V, Comparator>
+* VersionTree. insertAfter(p, q) complexity: O(log k), order(p, q) complexity: O(1)
+
+## algoritms ##
+
+Let n is number of elements in data structure, k - number of versions.
+
+* PersistentVector: fat-node realisation,  read: O(log k), write: O(log k), memory: O(kn).
+* PersistentList: Path Copying algorithm, read: O(1), insert to front: O(1), insert to random place: O(n), memory: O(kn).
+* PersistentMap: based on PersistentAVLTree, implemented using Path Copying algorithm, read/write: O(log n), memory: O(kn).
